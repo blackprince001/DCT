@@ -7,7 +7,7 @@ Supposed to be an installable that gives you and endpoint to monitor how much tr
 
 Things to do:
 
-- [ X ] Scrape network data
+- [X] Scrape network data
 - [ ] Possible CLI interaction?
 - [ ] Web socket and an endpoint to send stuff.
 - [ ] Minimal webpage to vizualize info from web server.
