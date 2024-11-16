@@ -1,21 +1,60 @@
-use std::{thread, time};
+use std::{
+    error::Error,
+    fmt, thread,
+    time::{self},
+};
 use sysinfo::Networks;
 
-pub fn run(mut netd: Networks) {
-    // TODO
-    // Take an interface
-    // refresh interface scrape over a loop
-    // print the results over stdin after a time period - tick
+const KILOBYTE: u64 = 1024;
 
-    let interfaces = Networks::list(&netd);
+#[derive(Debug)]
+pub struct InterfaceError {
+    message: String,
+}
 
-    println!("Network Interfaces: {:?}", interfaces.keys());
+impl fmt::Display for InterfaceError {
+    // this was totally unnecessary but solved a lot
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.message)
+    }
+}
 
-    thread::sleep(time::Duration::from_millis(10000));
+impl Error for InterfaceError {}
 
-    netd.refresh();
+pub fn run(mut netd: Networks, interface: &String, scrape_time: u64) -> Result<(), InterfaceError> {
+    let interfaces: Vec<&String> = Networks::list(&netd).keys().collect();
 
-    for (interface_name, network) in &netd {
-        println!("in {interface_name}: {} kB", network.received() / 1024);
+    if !interfaces.contains(&interface) {
+        return Err(InterfaceError {
+            message: format!(
+                "Interface '{}' not found. Available interfaces: {}",
+                interface,
+                interfaces
+                    .iter()
+                    .map(|s| s.to_string())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ),
+        });
+    }
+
+    println!("Monitoring network interface: {}", interface);
+    println!("Sampling every {} milliseconds", scrape_time);
+
+    loop {
+        thread::sleep(time::Duration::from_millis(scrape_time));
+        netd.refresh();
+
+        if let Some(network_data) = netd.get(interface) {
+            println!(
+                "Data Usage - Transmitted: {} KB, Received: {} KB",
+                network_data.transmitted() / KILOBYTE,
+                network_data.received() / KILOBYTE
+            );
+        } else {
+            return Err(InterfaceError {
+                message: format!("Lost connection to interface '{}'", interface),
+            });
+        }
     }
 }
