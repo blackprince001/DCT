@@ -5,7 +5,7 @@ use std::{
 };
 use sysinfo::Networks;
 
-const KILOBYTE: u64 = 1024;
+use super::types::DataSize;
 
 #[derive(Debug)]
 pub struct InterfaceError {
@@ -21,7 +21,12 @@ impl fmt::Display for InterfaceError {
 
 impl Error for InterfaceError {}
 
-pub fn run(mut netd: Networks, interface: &String, scrape_time: u64) -> Result<(), InterfaceError> {
+pub fn run(
+    mut netd: Networks,
+    interface: &String,
+    scrape_time: u64,
+    data_size: DataSize,
+) -> Result<(), InterfaceError> {
     let interfaces: Vec<&String> = Networks::list(&netd).keys().collect();
 
     if !interfaces.contains(&interface) {
@@ -41,15 +46,18 @@ pub fn run(mut netd: Networks, interface: &String, scrape_time: u64) -> Result<(
     println!("Monitoring network interface: {}", interface);
     println!("Sampling every {} milliseconds", scrape_time);
 
+    let size = data_size.size_to_value();
+
     loop {
         thread::sleep(time::Duration::from_millis(scrape_time));
         netd.refresh();
 
         if let Some(network_data) = netd.get(interface) {
             println!(
-                "Data Usage - Transmitted: {} KB, Received: {} KB",
-                network_data.transmitted() / KILOBYTE,
-                network_data.received() / KILOBYTE
+                "Data Usage - Transmitted: {}, Received: {} ({})",
+                network_data.transmitted() as f64 / size as f64,
+                network_data.received() as f64 / size as f64,
+                data_size.str()
             );
         } else {
             return Err(InterfaceError {
