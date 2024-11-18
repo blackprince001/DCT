@@ -3,6 +3,14 @@ name = "dct"
 version = "0.1.0"
 edition = "2021"
 
+[lib]
+name = "dct"
+path = "src/lib.rs"
+
+[[bin]]
+name = "dct"
+path = "src/main.rs"
+
 [dependencies]
 async-trait = "0.1.83"
 axum = { version = "0.7.9", features = ["ws"] }
