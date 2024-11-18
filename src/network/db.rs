@@ -3,7 +3,6 @@ use std::time::{Duration, SystemTime};
 
 use crate::network::types::HourlySample;
 
-// Storage trait for different implementations
 #[async_trait::async_trait]
 pub trait MetricsStorage {
     async fn store_hourly_sample(
@@ -13,7 +12,6 @@ pub trait MetricsStorage {
     async fn get_hourly_samples(&self) -> Result<Vec<HourlySample>, Box<dyn std::error::Error>>;
 }
 
-// SQLite implementation
 #[derive(Debug, Clone)]
 
 pub struct SqliteStorage {
@@ -24,7 +22,6 @@ impl SqliteStorage {
     pub async fn new(db_path: &str) -> Result<Self, Box<dyn std::error::Error>> {
         let pool = SqlitePool::connect(db_path).await?;
 
-        // Create tables if they don't exist
         sqlx::query(
             r#"
             CREATE TABLE IF NOT EXISTS hourly_samples (
@@ -77,7 +74,7 @@ impl MetricsStorage for SqliteStorage {
         let cutoff = SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)?
             .as_secs()
-            - (24 as u64 * 3600);
+            - (24_u64 * 3600);
 
         let ic = cutoff as i64;
 

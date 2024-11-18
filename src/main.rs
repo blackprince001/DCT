@@ -15,20 +15,16 @@ use sysinfo::Networks;
 async fn main() -> Result<(), Box<dyn Error>> {
     let networks = Networks::new_with_refreshed_list();
     let interface = String::from("en0");
-    let scrape_time = 1000; // 1 second
+    let scrape_time = 1000;
     let packet_size = DataSize::Kilobyte;
 
-    // Create shared state
     let analytics = NetworkAnalytics::new(interface.clone(), packet_size);
     let shared_state = Arc::new(RwLock::new(analytics));
 
-    // Create an Sqlite Data Storage db
     let db = SqliteStorage::new("metrics.db").await?;
 
-    // Create router
     let app = create_router(shared_state.clone(), db.clone());
 
-    // Start server
     let addr = std::net::SocketAddr::from(([127, 0, 0, 1], 8000));
     println!("Server running on http://{}", addr);
 

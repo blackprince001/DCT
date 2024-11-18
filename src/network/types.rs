@@ -29,7 +29,7 @@ pub struct NetworkSample {
     pub bytes_sent: u64,
     pub bytes_per_second_in: f64,
     pub bytes_per_second_out: f64,
-    // Add human readable converted values
+
     pub transfer_rate_in: String,
     pub transfer_rate_out: String,
 }
@@ -93,12 +93,10 @@ impl NetworkAnalytics {
             .unwrap_or(Duration::from_secs(1));
         let duration_secs = duration.as_secs_f64();
 
-        // Calculate rates
         let bytes_per_second_in =
             (bytes_received - self.last_bytes_received) as f64 / duration_secs;
         let bytes_per_second_out = (bytes_sent - self.last_bytes_sent) as f64 / duration_secs;
 
-        // Convert to specified data size and format string
         let rate_in = self.data_size.convert(bytes_per_second_in as u64);
         let rate_out = self.data_size.convert(bytes_per_second_out as u64);
 
@@ -115,13 +113,11 @@ impl NetworkAnalytics {
             transfer_rate_out,
         };
 
-        // Update recent samples
         self.recent_samples.push_back(new_sample.clone());
         if self.recent_samples.len() > self.max_samples {
             self.recent_samples.pop_front();
         }
 
-        // Update current state
         self.current_sample = new_sample;
         self.last_bytes_received = bytes_received;
         self.last_bytes_sent = bytes_sent;
@@ -133,7 +129,6 @@ impl NetworkAnalytics {
             return;
         }
 
-        // Calculate averages from recent samples
         let samples_count = self.recent_samples.len() as f64;
         let avg_bytes_per_second_in: f64 = self
             .recent_samples
@@ -149,7 +144,6 @@ impl NetworkAnalytics {
             .sum::<f64>()
             / samples_count;
 
-        // Create hourly sample
         let hourly_sample = HourlySample {
             timestamp,
             avg_bytes_per_second_in,
@@ -158,7 +152,6 @@ impl NetworkAnalytics {
             total_bytes_sent: self.current_sample.bytes_sent,
         };
 
-        // Store hourly sample
         self.hourly_samples.push_back(hourly_sample);
         if self.hourly_samples.len() > self.max_hourly_samples {
             self.hourly_samples.pop_front();
@@ -191,7 +184,6 @@ impl NetworkAnalytics {
     }
 }
 
-// Return structure for the endpoints
 #[derive(Debug, Serialize)]
 pub struct NetworkMetrics {
     pub interface: String,
@@ -199,7 +191,6 @@ pub struct NetworkMetrics {
     pub recent: Vec<NetworkSample>,
 }
 
-// Timestamp serialization module (as before)
 mod timestamp_serde {
     use serde::{Deserialize, Deserializer, Serializer};
     use std::time::{Duration, SystemTime, UNIX_EPOCH};

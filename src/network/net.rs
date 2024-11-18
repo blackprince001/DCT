@@ -23,7 +23,6 @@ pub async fn run(
         if let Some(network) = networks.iter().find(|(name, _)| *name == interface) {
             let (_, network_data) = network;
 
-            // Update analytics with new data
             let mut analytics = analytics.write().await;
             analytics.update_from_sysinfo(
                 network_data.total_received(),

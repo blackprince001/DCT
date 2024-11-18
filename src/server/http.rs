@@ -8,7 +8,6 @@ use tokio::time::{interval, Duration};
 use crate::network::db::{MetricsStorage, SqliteStorage};
 use crate::network::types::{HourlySample, NetworkAnalytics, NetworkMetrics};
 
-// Shared state between endpoints
 type SharedState = Arc<RwLock<NetworkAnalytics>>;
 
 #[derive(Clone)]
@@ -17,7 +16,6 @@ pub struct AppState {
     db: Arc<SqliteStorage>,
 }
 
-// REST endpoint handler
 async fn get_metrics(State(state): State<AppState>) -> Json<NetworkMetrics> {
     let analytics = state.network_analytics.read().await;
     Json(analytics.get_metrics())
@@ -32,7 +30,7 @@ async fn get_hourly_metrics(State(state): State<AppState>) -> Json<Vec<HourlySam
         }
     }
 }
-// WebSocket handler
+
 async fn ws_metrics_handler(
     ws: WebSocketUpgrade,
     State(state): State<AppState>,
