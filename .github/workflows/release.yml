@@ -1,0 +1,73 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          draft: false
+          prerelease: false
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+
+  build-release:
+    needs: create-release
+    name: Build Release - ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            artifact_name: dct
+            asset_name: dct-linux-amd64
+          - os: windows-latest
+            artifact_name: dct.exe
+            asset_name: dct-windows-amd64.exe
+          - os: macos-latest
+            artifact_name: dct
+            asset_name: dct-macos-amd64
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Install SQLite (Ubuntu)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y sqlite3 libsqlite3-dev
+
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
+    
+    - name: Build
+      run: cargo build --release
+
+    - name: Prepare asset
+      shell: bash
+      run: |
+        cd target/release
+        tar czf ../../${{ matrix.asset_name }}.tar.gz ${{ matrix.artifact_name }}
+
+    - name: Upload Release Asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.create-release.outputs.upload_url }}
+        asset_path: ./${{ matrix.asset_name }}.tar.gz
+        asset_name: ${{ matrix.asset_name }}.tar.gz
+        asset_content_type: application/gzip
