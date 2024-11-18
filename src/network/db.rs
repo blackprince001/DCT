@@ -14,6 +14,8 @@ pub trait MetricsStorage {
 }
 
 // SQLite implementation
+#[derive(Debug, Clone)]
+
 pub struct SqliteStorage {
     pub pool: SqlitePool,
 }

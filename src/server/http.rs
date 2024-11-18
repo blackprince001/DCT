@@ -5,7 +5,7 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 use tokio::time::{interval, Duration};
 
-use crate::network::db::{MetricsStorage, SqliteStorage};
+use crate::network::db::SqliteStorage;
 use crate::network::types::{HourlySample, NetworkAnalytics, NetworkMetrics};
 
 // Shared state between endpoints

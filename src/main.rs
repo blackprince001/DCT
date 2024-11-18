@@ -26,7 +26,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let db = SqliteStorage::new("metrics.db").await?;
 
     // Create router
-    let app = create_router(shared_state.clone(), db);
+    let app = create_router(shared_state.clone(), db.clone());
 
     // Start server
     let addr = std::net::SocketAddr::from(([127, 0, 0, 1], 8000));
@@ -43,7 +43,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let network_handle = tokio::spawn({
         let shared_state = shared_state.clone();
         async move {
-            if let Err(e) = network::net::run(networks, &interface, scrape_time, shared_state).await
+            if let Err(e) =
+                network::net::run(networks, &interface, scrape_time, shared_state, db.clone()).await
             {
                 eprintln!("Network monitoring error: {}", e);
             }
