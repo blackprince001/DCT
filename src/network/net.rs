@@ -1,68 +1,33 @@
-use std::{
-    error::Error,
-    fmt, thread,
-    time::{self},
-};
+use crate::network::types::NetworkAnalytics;
+use std::error::Error;
+use std::sync::Arc;
+use std::time::Duration;
 use sysinfo::Networks;
+use tokio::sync::RwLock;
+use tokio::time;
 
-use super::types::DataSize;
-
-#[derive(Debug)]
-pub struct InterfaceError {
-    message: String,
-}
-
-impl fmt::Display for InterfaceError {
-    // this was totally unnecessary but solved a lot
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.message)
-    }
-}
-
-impl Error for InterfaceError {}
-
-pub fn run(
-    mut netd: Networks,
-    interface: &String,
-    scrape_time: u64,
-    data_size: DataSize,
-) -> Result<(), InterfaceError> {
-    let interfaces: Vec<&String> = Networks::list(&netd).keys().collect();
-
-    if !interfaces.contains(&interface) {
-        return Err(InterfaceError {
-            message: format!(
-                "Interface '{}' not found. Available interfaces: {}",
-                interface,
-                interfaces
-                    .iter()
-                    .map(|s| s.to_string())
-                    .collect::<Vec<_>>()
-                    .join(", ")
-            ),
-        });
-    }
-
-    println!("Monitoring network interface: {}", interface);
-    println!("Sampling every {} milliseconds", scrape_time);
-
-    let size = data_size.size_to_value();
+pub async fn run(
+    mut networks: Networks,
+    interface: &str,
+    scrape_interval: u64,
+    analytics: Arc<RwLock<NetworkAnalytics>>,
+) -> Result<(), Box<dyn Error>> {
+    let mut interval = time::interval(Duration::from_millis(scrape_interval));
 
     loop {
-        thread::sleep(time::Duration::from_millis(scrape_time));
-        netd.refresh();
+        networks.refresh();
 
-        if let Some(network_data) = netd.get(interface) {
-            println!(
-                "Data Usage - Transmitted: {}, Received: {} ({})",
-                network_data.transmitted() as f64 / size as f64,
-                network_data.received() as f64 / size as f64,
-                data_size.str()
+        if let Some(network) = networks.iter().find(|(name, _)| *name == interface) {
+            let (_, network_data) = network;
+
+            // Update analytics with new data
+            let mut analytics = analytics.write().await;
+            analytics.update_from_sysinfo(
+                network_data.total_received(),
+                network_data.total_transmitted(),
             );
-        } else {
-            return Err(InterfaceError {
-                message: format!("Lost connection to interface '{}'", interface),
-            });
         }
+
+        interval.tick().await;
     }
 }
