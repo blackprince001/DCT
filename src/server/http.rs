@@ -1,34 +1,15 @@
 use axum::extract::ws::{WebSocket, WebSocketUpgrade};
-use axum::{extract::State, response::Json, routing::get, Router};
+use axum::{extract::State, routing::get, Router};
 
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use tokio::time::{interval, Duration};
 
-use crate::network::db::{MetricsStorage, SqliteStorage};
-use crate::network::types::{HourlySample, NetworkAnalytics, NetworkMetrics};
-
-type SharedState = Arc<RwLock<NetworkAnalytics>>;
+type SharedState = Arc<RwLock<crate::network::types::NetworkAnalytics>>;
 
 #[derive(Clone)]
 pub struct AppState {
     network_analytics: SharedState,
-    db: Arc<SqliteStorage>,
-}
-
-async fn get_metrics(State(state): State<AppState>) -> Json<NetworkMetrics> {
-    let analytics = state.network_analytics.read().await;
-    Json(analytics.get_metrics())
-}
-
-async fn get_hourly_metrics(State(state): State<AppState>) -> Json<Vec<HourlySample>> {
-    match state.db.get_hourly_samples().await {
-        Ok(samples) => Json(samples),
-        Err(e) => {
-            eprintln!("Error fetching hourly samples: {}", e);
-            Json(Vec::new())
-        }
-    }
 }
 
 async fn ws_metrics_handler(
@@ -55,15 +36,12 @@ async fn handle_ws_connection(mut socket: WebSocket, state: AppState) {
     }
 }
 
-pub fn create_router(network_state: SharedState, database: SqliteStorage) -> Router {
+pub fn create_router(network_state: SharedState) -> Router {
     let state = AppState {
         network_analytics: network_state,
-        db: Arc::new(database),
     };
 
     Router::new()
-        .route("/metrics", get(get_metrics))
-        .route("/metrics/hourly", get(get_hourly_metrics))
         .route("/ws", get(ws_metrics_handler))
         .with_state(state)
 }

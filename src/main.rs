@@ -1,10 +1,7 @@
 mod network;
 mod server;
 
-use network::{
-    db::SqliteStorage,
-    types::{DataSize, NetworkAnalytics},
-};
+use network::types::{DataSize, NetworkAnalytics};
 use server::http::create_router;
 use std::{error::Error, sync::Arc};
 use tokio::{net::TcpListener, sync::RwLock};
@@ -21,9 +18,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let analytics = NetworkAnalytics::new(interface.clone(), packet_size);
     let shared_state = Arc::new(RwLock::new(analytics));
 
-    let db = SqliteStorage::new("metrics.db").await?;
-
-    let app = create_router(shared_state.clone(), db.clone());
+    let app = create_router(shared_state.clone());
 
     let addr = std::net::SocketAddr::from(([127, 0, 0, 1], 8000));
     println!("Server running on http://{}", addr);
@@ -39,8 +34,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let network_handle = tokio::spawn({
         let shared_state = shared_state.clone();
         async move {
-            if let Err(e) =
-                network::net::run(networks, &interface, scrape_time, shared_state, db.clone()).await
+            if let Err(e) = network::net::run(networks, &interface, scrape_time, shared_state).await
             {
                 eprintln!("Network monitoring error: {}", e);
             }

@@ -29,7 +29,6 @@ pub struct NetworkSample {
     pub bytes_sent: u64,
     pub bytes_per_second_in: f64,
     pub bytes_per_second_out: f64,
-
     pub transfer_rate_in: String,
     pub transfer_rate_out: String,
 }
@@ -49,9 +48,7 @@ pub struct NetworkAnalytics {
     pub interface_name: String,
     pub current_sample: NetworkSample,
     recent_samples: VecDeque<NetworkSample>,
-    hourly_samples: VecDeque<HourlySample>,
     max_samples: usize,
-    max_hourly_samples: usize,
     last_bytes_received: u64,
     last_bytes_sent: u64,
     last_update: SystemTime,
@@ -75,9 +72,7 @@ impl NetworkAnalytics {
             interface_name,
             current_sample: initial_sample,
             recent_samples: VecDeque::with_capacity(60),
-            hourly_samples: VecDeque::with_capacity(24),
             max_samples: 60,
-            max_hourly_samples: 24,
             last_bytes_received: 0,
             last_bytes_sent: 0,
             last_update: now,
@@ -124,40 +119,6 @@ impl NetworkAnalytics {
         self.last_update = now;
     }
 
-    fn aggregate_hourly_data(&mut self, timestamp: SystemTime) {
-        if self.recent_samples.is_empty() {
-            return;
-        }
-
-        let samples_count = self.recent_samples.len() as f64;
-        let avg_bytes_per_second_in: f64 = self
-            .recent_samples
-            .iter()
-            .map(|s| s.bytes_per_second_in)
-            .sum::<f64>()
-            / samples_count;
-
-        let avg_bytes_per_second_out: f64 = self
-            .recent_samples
-            .iter()
-            .map(|s| s.bytes_per_second_out)
-            .sum::<f64>()
-            / samples_count;
-
-        let hourly_sample = HourlySample {
-            timestamp,
-            avg_bytes_per_second_in,
-            avg_bytes_per_second_out,
-            total_bytes_received: self.current_sample.bytes_received,
-            total_bytes_sent: self.current_sample.bytes_sent,
-        };
-
-        self.hourly_samples.push_back(hourly_sample);
-        if self.hourly_samples.len() > self.max_hourly_samples {
-            self.hourly_samples.pop_front();
-        }
-    }
-
     fn get_size_suffix(&self) -> &'static str {
         match self.data_size {
             DataSize::Byte => "B",
@@ -169,10 +130,6 @@ impl NetworkAnalytics {
 
     pub fn get_recent_samples(&self) -> Vec<&NetworkSample> {
         self.recent_samples.iter().collect()
-    }
-
-    pub fn get_hourly_samples(&self) -> Vec<&HourlySample> {
-        self.hourly_samples.iter().collect()
     }
 
     pub fn get_metrics(&self) -> NetworkMetrics {
